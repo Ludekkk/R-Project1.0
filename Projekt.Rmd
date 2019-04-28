@@ -1,0 +1,198 @@
+---
+title: "Projekt 1.0"
+author: "Michał Baran"
+date: "25 kwietnia 2019"
+output: html_document
+runtime: shiny
+---
+```{r, echo=FALSE, error=FALSE}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(tseries)
+library(shiny)
+
+```
+
+```{r}
+#ilosc symulacji
+N <- 200
+#poziom istotnosci
+alpha <- c( .01, .05, .1, 0.15)
+#stopnie swobody
+df <- c(1:15)
+#długość próby
+len <- seq(14,30, by=2)  
+```
+
+Ramka danych stworzona przy pomocy expand.grid 
+```{r}
+data1 <- expand.grid(alpha,df,len)
+colnames(data1) <- c("Poziom", "Stopnie", "Dlugosc")
+```
+
+Jarque-Bera:
+```{r}
+set.seed(22)
+
+
+powers_JB <- sapply(1:nrow(data1),function(i){
+    df <- data1[i,2]
+    n <-  data1[i,3]
+    alpha <- data1[i,1]
+    
+    p_vector <- sapply(rep(df,N), function(j){
+      JR_sample <- rt(n,df)
+      jarque.bera.test(JR_sample)$p.value
+    })
+    mean(p_vector < alpha)
+})
+
+dataa_JB <- bind_cols(data1, Moc = powers_JB)
+```
+
+Shapiro-Wilka:
+```{r}
+set.seed(22)
+
+powers_SW <- sapply(1:nrow(data1),function(i){
+    df <- data1[i,2]
+    n <-  data1[i,3]
+    alpha <- data1[i,1]
+    
+    p_vector <- sapply(rep(df,N), function(j){
+      SW_sample <- rt(n,df)
+      shapiro.test(SW_sample)$p.value
+    })
+    mean(p_vector < alpha)
+})
+
+dataa_SW <- bind_cols(data1, Moc = powers_SW)
+```
+
+Kolmogorowa-Smirnowa:
+```{r}
+set.seed(22)
+
+powers_KS <- sapply(1:nrow(data1),function(i){
+    df <- data1[i,2]
+    n <-  data1[i,3]
+    alpha <- data1[i,1]
+    
+    p_vector <- sapply(rep(df,N), function(j){
+      KS_sample <- rt(n,df)
+      ks.test(KS_sample, pnorm)$p.value
+    })
+    mean(p_vector < alpha)
+})
+
+dataa_KS <- bind_cols(data1, Moc = powers_KS)
+
+```
+
+```{r}
+dataa <- bind_cols(data1, MocJB = powers_JB, MocKS = powers_KS, MocSW = powers_SW)
+
+index2 <- which(dataa$Poziom == 0.01 & dataa$Dlugosc == 20)
+    lol <- dataa[index2,]
+    
+    
+      lol$newcolumn <- sapply(1:nrow(lol),function(i){
+      mean(lol[i,4],lol[i,5],lol[i,6])
+    })
+      colnames(lol)[7] <- "Moc"
+      now2 <- lol
+      now2
+      
+      plot <- ggplot(now2 ,aes(x = Stopnie, y = Moc))+
+      geom_line(aes(x = Stopnie, y = MocJB, color = "JB"))+
+      geom_line(aes(x = Stopnie, y = MocSW, color = "SW"))+
+      geom_line(aes(x = Stopnie, y = MocKS, color = "KS"))+
+      labs(title = "Zestawienie testow")
+      plot + labs(color = "Testy")
+
+```
+
+Wykresy:
+```{r, echo=FALSE}
+ui <- fluidPage(
+  titlePanel("Wykresy!"),
+  navbarPage("MENU",
+    tabPanel("Testy",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput("test", "Wybierz test:", choices = c("JB","SW", "KS")),
+          sliderInput("length1", "Wybierz dlugosc proby:", min = 14, max = 30, value = c(14:30), step = 2)
+        ),
+        mainPanel(
+          plotOutput("plot1")
+          )
+          )),
+  
+    tabPanel("Zestawienie",
+            sidebarLayout(
+              sidebarPanel(
+              selectInput("length2", "Wybierz dlugosc proby:", choices = seq(14,30, by=2)),
+              selectInput("level", "wybierz poziom istotnosci:", choices = c( .01, .05, .1, .15) )
+              ),
+            mainPanel(
+              plotOutput("plot2")
+            )
+            ))
+
+))
+  
+server <- function(input, output) {
+  
+  now <- reactive({
+    if(input$test == "SW"){
+      index <- which(dataa_SW$Dlugosc >= input$length1[1] & dataa_SW$Dlugosc <= input$length1[2])
+      now <- dataa_SW[index,]
+    }
+    else if (input$test == "JB"){
+      index <- which(dataa_SW$Dlugosc >= input$length1[1] & dataa_SW$Dlugosc <= input$length1[2])
+      now <- dataa_JB[index,]
+    }
+    else if (input$test == "KS"){
+      index <- which(dataa_SW$Dlugosc >= input$length1[1] & dataa_SW$Dlugosc <= input$length1[2])
+      now <- dataa_KS[index,]
+    }
+  })
+  
+  now2 <- reactive({
+    index2 <- which(dataa$Poziom == input$level & dataa$Dlugosc == input$length2)
+    lol <- dataa[index2,]
+    
+    
+      lol$newcolumn <- sapply(1:nrow(lol),function(i){
+      mean(lol[i,4],lol[i,5],lol[i,6])
+    })
+      colnames(lol)[7] <- "Moc"
+      now2 <- lol
+  })
+  
+  output$plot1 <- renderPlot({
+    plot <- ggplot(now())+
+    geom_smooth(aes(x = Stopnie, y = Moc, color = "red"))+
+    facet_wrap(~ Poziom, ncol =  2)
+    plot
+  })
+
+  output$plot2 <- renderPlot({
+      plot <- ggplot(now2() ,aes(x = Stopnie, y = Moc))+
+      geom_line(aes(x = Stopnie, y = MocJB, color = "JB"))+
+      geom_line(aes(x = Stopnie, y = MocSW, color = "SW"))+
+      geom_line(aes(x = Stopnie, y = MocKS, color = "KS"))+
+      labs(title = "Zestawienie testow")
+      plot + labs(color = "Testy")
+  })
+    
+  
+  
+
+} 
+
+shinyApp(ui = ui, server = server)
+```
+
+
