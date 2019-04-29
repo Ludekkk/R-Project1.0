@@ -5,7 +5,7 @@ date: "25 kwietnia 2019"
 output: html_document
 runtime: shiny
 ---
-```{r, echo=FALSE, error=FALSE}
+```{r, message=FALSE, results='hide', echo=FALSE, warning=FALSE}
 library(dplyr)
 library(tidyr)
 library(ggplot2)
@@ -13,7 +13,51 @@ library(tseries)
 library(shiny)
 
 ```
+### Wprowadzenie i hipotezy
+Tematem projektu jest zbanianie mocy testów normalnościowych razkładu w przypadku gdy dane pochodzą z rozkładu _t-Studenta_. Moce testów zostaną zbadane w zależności od:  
+* Długości próby.  
+* Ilości stopni swodoby w rozkładzie t-Studenta.  
+* Poziomu istotności.  
 
+***
+Do wykonania projektu posłużę się trzema testami normalności rozkładu:
+
+- __Jarque Bera__  
+Test ten jest najczęściej uzywanym testem w ekonometrii.Powodem tego jest jego prostota oraz znana nieskomplikowana postać rozkładu asymptotycznego. Konstrukcja statystyki testowej bazuje na wartościach momentów rozkłądu zmiennej losowej obliczonych na podstawie próby empiryczniej i porównaniu ich z momentami teoretycznumi rozkładu normalnego. Test weryfikuje hipotezę o jednowymiarowej normalności zmiennej losowej przeciwko innemu dowolnemu rozkładowi.
+
+- __Shapiro-Wilka__  
+Test ten jest uznawany za najlepszy do sprawdzania normalności rozkładu zmiennej losowej, ponieważ charakteryzuje go duża moc, czyli duże prawdopodobieństwo odrzucenia hipotezy zerowej jeśli jest ona fałszywa. Polecany jest dla małych próbek, ponieważ gdy liczba obserwacji przekracza 2000 może zwracać blędne wyniki. Test weryfikuje hipotezę mówiącą o o tym, że rozkład naszej zmiennej jest zbliżony do normalnego.
+
+- __Kołmogorowa-Smirnowa__  
+Test ten dla jednej próby służy testowaniu podobieństwa uzyskanego rozkładu naszej badanej zmiennej z innym teoretycznym rozkładem np.: normalnym, Poissona, czy jednostajnym. Najczęściej jednak w praktyce badań ilościowych test ten służy do oszacowania czy rozkład badanej zmiennej jest zbliżony do normalnego. Test weryfikuje hipotezę  o tym, że rozkład naszej zmiennej jest zbliżony do normalnego. 
+
+***
+Dane którymi będę się posługiwał przedstawię w postaci trzech wektorów.  
+
+1. *alpha* - poziomy istotności 
+2. *len* - długości próby  
+3. *df* - stopnie swobody  
+
+***
+Obliczenia wykonane w projekcie będą miały na celu zbadanie prawdziwości poniższych hipotez:  
+
+__Zależność od długości próby__  
+H0: Zwiększnie długości próby powoduje wzrost mocy tesu   
+H1: Zwiększnie długości próby powoduje spadek mocy tesu  
+
+__Zależność od poziomu istotności__  
+H0: Zwiększnie poziomu istotności powoduje spadek mocy tesu  
+H1: Zwiększnie poziomu istotności powoduje wzrost mocy tesu  
+
+__Zależność od ilości stopni swobody__  
+H0: Zwiększnie ilości stopni swobody powoduje wzrost mocy tesu  
+H1: Zwiększnie ilości stopni swobody powoduje spadek mocy tesu  
+
+Oczekiwanym rezultatem w każdym przypadku jest brak postaw do odrzucenia hipotezy zerowej.
+
+***
+### Wizualizacja
+Tworzę wektory danych, dzięki którym będę mógł przetestować postawione hipotezy:
 ```{r}
 #ilosc symulacji
 N <- 200
