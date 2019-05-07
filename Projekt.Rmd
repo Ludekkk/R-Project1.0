@@ -11,7 +11,6 @@ library(tidyr)
 library(ggplot2)
 library(tseries)
 library(shiny)
-
 ```
 ### Wprowadzenie i hipotezy
 Tematem projektu jest zbanianie mocy testów normalnościowych razkładu w przypadku gdy dane pochodzą z rozkładu _t-Studenta_. Moce testów zostaną zbadane w zależności od:  
@@ -46,12 +45,12 @@ H0: Zwiększnie długości próby powoduje wzrost mocy tesu
 H1: Zwiększnie długości próby powoduje spadek mocy tesu  
 
 __Zależność od poziomu istotności__  
-H0: Zwiększnie poziomu istotności powoduje spadek mocy tesu  
-H1: Zwiększnie poziomu istotności powoduje wzrost mocy tesu  
+H0: Zwiększnie poziomu istotności powoduje wzrost mocy tesu  
+H1: Zwiększnie poziomu istotności powoduje spadek mocy tesu  
 
 __Zależność od ilości stopni swobody__  
-H0: Zwiększnie ilości stopni swobody powoduje wzrost mocy tesu  
-H1: Zwiększnie ilości stopni swobody powoduje spadek mocy tesu  
+H0: Zwiększnie ilości stopni swobody powoduje spadek mocy tesu  
+H1: Zwiększnie ilości stopni swobody powoduje wzrost mocy tesu  
 
 Oczekiwanym rezultatem w każdym przypadku jest brak postaw do odrzucenia hipotezy zerowej.
 
@@ -69,17 +68,15 @@ df <- c(1:15)
 len <- seq(14,30, by=2)  
 ```
 
-Ramka danych stworzona przy pomocy expand.grid 
+Nastepnie tworzę ramkę danych, dzięki której będę sprawdzał poszczególne przypadki:
 ```{r}
 data1 <- expand.grid(alpha,df,len)
 colnames(data1) <- c("Poziom", "Stopnie", "Dlugosc")
 ```
 
-Jarque-Bera:
+Dla każdego testu przeprowadzam *N* symulacji, a nastepnie uśredniony wynik dla każdego przypadku zapisuję (przykład dla testu Jarque-Bera):
 ```{r}
 set.seed(22)
-
-
 powers_JB <- sapply(1:nrow(data1),function(i){
     df <- data1[i,2]
     n <-  data1[i,3]
@@ -91,12 +88,12 @@ powers_JB <- sapply(1:nrow(data1),function(i){
     })
     mean(p_vector < alpha)
 })
-
 dataa_JB <- bind_cols(data1, Moc = powers_JB)
 ```
 
-Shapiro-Wilka:
-```{r}
+To samo powtarzam dla testu Shapiro-Wilka oraz Kołmogorowa-Smirnowa.
+```{r, message=FALSE, results='hide', echo=FALSE, warning=FALSE}
+#SW
 set.seed(22)
 
 powers_SW <- sapply(1:nrow(data1),function(i){
@@ -114,8 +111,8 @@ powers_SW <- sapply(1:nrow(data1),function(i){
 dataa_SW <- bind_cols(data1, Moc = powers_SW)
 ```
 
-Kolmogorowa-Smirnowa:
-```{r}
+```{r, message=FALSE, results='hide', echo=FALSE, warning=FALSE}
+#KS
 set.seed(22)
 
 powers_KS <- sapply(1:nrow(data1),function(i){
@@ -134,30 +131,12 @@ dataa_KS <- bind_cols(data1, Moc = powers_KS)
 
 ```
 
+Do pierwotnej ramki danych dodaję kolumny z mocami poszczególnych testów:
 ```{r}
 dataa <- bind_cols(data1, MocJB = powers_JB, MocKS = powers_KS, MocSW = powers_SW)
-
-index2 <- which(dataa$Poziom == 0.01 & dataa$Dlugosc == 20)
-    lol <- dataa[index2,]
-    
-    
-      lol$newcolumn <- sapply(1:nrow(lol),function(i){
-      mean(lol[i,4],lol[i,5],lol[i,6])
-    })
-      colnames(lol)[7] <- "Moc"
-      now2 <- lol
-      now2
-      
-      plot <- ggplot(now2 ,aes(x = Stopnie, y = Moc))+
-      geom_line(aes(x = Stopnie, y = MocJB, color = "JB"))+
-      geom_line(aes(x = Stopnie, y = MocSW, color = "SW"))+
-      geom_line(aes(x = Stopnie, y = MocKS, color = "KS"))+
-      labs(title = "Zestawienie testow")
-      plot + labs(color = "Testy")
-
 ```
 
-Wykresy:
+Tworzę aplikację shiny, który pozwoli na łatwe i przejrzyste zaobserwowanie badanych przez nas aspektów:
 ```{r, echo=FALSE}
 ui <- fluidPage(
   titlePanel("Wykresy!"),
@@ -185,8 +164,9 @@ ui <- fluidPage(
             ))
 
 ))
+
   
-server <- function(input, output) {
+server <- function(input, output, session) {
   
   now <- reactive({
     if(input$test == "SW"){
@@ -218,7 +198,7 @@ server <- function(input, output) {
     plot <- ggplot(now())+
     geom_smooth(aes(x = Stopnie, y = Moc, color = "red"))+
     facet_wrap(~ Poziom, ncol =  2)
-    plot
+    plot + theme(legend.position = "none") 
   })
 
   output$plot2 <- renderPlot({
@@ -231,11 +211,39 @@ server <- function(input, output) {
   })
 } 
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, options = list(height = 540))
 ```
 
 ***
 ### Interpretacja  
 
+Hipotezy początkowe:  
 
+__Zależność od długości próby__  
+H0: Zwiększnie długości próby powoduje wzrost mocy tesu   
+H1: Zwiększnie długości próby powoduje spadek mocy tesu  
+
+__Zależność od poziomu istotności__  
+H0: Zwiększnie poziomu istotności powoduje wzrost mocy tesu  
+H1: Zwiększnie poziomu istotności powoduje spadek mocy tesu  
+
+__Zależność od ilości stopni swobody__  
+H0: Zwiększnie ilości stopni swobody powoduje spadek mocy tesu  
+H1: Zwiększnie ilości stopni swobody powoduje wzrost mocy tesu  
+
+***
+
+Po wynonaniu powyższej analizy można można stwierdzieć, że w każdym z trzech przypadków nie ma podstaw do odrzucnia hipotezy zerowej.  
+
+Oznacza to, że zwiększenie długości próby, tak samo jak poziomu istotności powoduje wzrost mocy badanego testu. Jednak zwiększenie ilości stopni swobody jego zmniejsznie.  
+
+Najsłabszym testem okazał się test Kołmogorowa-Smirnowa, a najmocniejszym Shapiro-Wilka. (Należy jednak pamiętać, że długość naszej próbki jest niewielka, a dla takich właśnie test Shapiro-Wilka sprawdza się najlepiej)  
+
+***
+Uprostrzenia, które mogą mieć wpływ na wyniki przeprowadzonej analizy:  
+- uprostrzone wizualizacja mocy testów normalnościowych  
+- dość mała długość próby  
+- mała liczba symulacji każdego testu  
+
+***
 
