@@ -204,8 +204,7 @@ server <- function(input, output) {
   })
   
   now2 <- reactive({
-    index2 <- which(dataa$Poziom == input$level & dataa$Dlugosc == input$length2)
-    lol <- dataa[index2,]
+    lol <- filter(dataa, dataa$Poziom == input$level & dataa$Dlugosc == input$length2)
     
     
       lol$newcolumn <- sapply(1:nrow(lol),function(i){
@@ -230,13 +229,13 @@ server <- function(input, output) {
       labs(title = "Zestawienie testow")
       plot + labs(color = "Testy")
   })
-    
-  
-  
-
 } 
 
 shinyApp(ui = ui, server = server)
 ```
+
+***
+### Interpretacja  
+
 
 
